@@ -5,6 +5,7 @@ section .text
 
 extern  malloc
 extern  memcpy
+extern  memmove
 extern  free
 
 global _add
@@ -51,6 +52,46 @@ _cvec_init:
     call    malloc     ; rax =  malloc(vec->element_size * vec->capacity);
 
     mov     QWORD [rbx], rax  ; vec->data
+
+    mov     rsp, rbp
+    pop     rbx
+    pop     rbp
+ret
+
+global _cvec_copy  ; rcx - *vecF,  rdx - *vecS
+_cvec_copy:
+    push    rbp
+    push    rbx
+    mov     rbp, rsp
+    sub     rsp, 32+24 ; alignment + (stak_spase % 16 + 8)
+
+    mov     [rbp-8],    rcx 
+    mov     [rbp-16],   rdx 
+
+    mov     eax,    DWORD [rcx+16]  ; eax = vecF->capacity
+    mov     ebx,    DWORD [rdx+12]  ; ebx = vecS->size
+
+    cmp     eax,    ebx
+    jae     Enough_S                ; if vecF->capacity >= vecS->size
+
+    imul    rbx,   2
+    mov     rdx,    rbx
+    call _cvec_resize               ; vecF->capacity = vecS->size*2
+
+Enough_S:
+    
+    mov     rcx,    QWORD[rbp-8]
+    mov     rdx,    QWORD[rbp-16] 
+
+    mov     eax,    DWORD [rdx+8]   ; vecS->dataSize
+    mov     r8d,    DWORD [rdx+12]  ; vecS->size
+    mov     DWORD[rcx+12],     r8d  ; vecF->size = vecS->size
+    imul    r8,     rax
+
+    mov     rcx,    QWORD[rcx]
+    mov     rdx,    QWORD[rdx]
+    call memcpy ;memcpy(vecF->daata (rcx), vecS->daata (rdx), vecS->element_size * vecS->size (r8));
+
 
     mov     rsp, rbp
     pop     rbx
@@ -116,13 +157,6 @@ _cvec_set:
 ret
 
 global _cvec_resize ; rcx - *vec, rdx - newCap
-    ; vec->capacity = newCap;
-
-	; void* t = malloc(vec->element_size * vec->capacity);
-	; memcpy(t, vec->data, vec->element_size * vec->size);
-
-	; free(vec->data);
-	; vec->data = t;
 _cvec_resize:
      
     push    rbp
@@ -164,6 +198,63 @@ _cvec_resize:
     pop     rbp
 ret
 
+global _cvec_clear ; rcx - *vec
+_cvec_clear:
+    
+    mov     DWORD [rcx+12], 0   ; vec->size
+    mov     DWORD [rcx+16], 0   ; vec->capacity
+
+    mov     rcx,     QWORD[rcx]     ; rcx = vec->data
+    call    free ;free(vec->data (rcx));
+ret
+
+global _cvec_push_back ; rcx - *vec, rdx - *Data
+_cvec_push_back:
+    
+    push    rbp
+    push    rbx
+    mov     rbp, rsp
+    sub     rsp, 32+24 ; alignment + (stak_spase % 16 + 8)
+
+    ;save:
+    mov [rbp-8],    rcx 
+    mov [rbp-16],   rdx
+
+    mov     eax, DWORD [rcx+12]     ; rax = vec->size
+    mov     ebx, DWORD [rcx+16]     ; rbx = vec->capacity
+ 
+    cmp     eax, ebx                ;  mb need a >= check
+    jne      N_isFull
+    ;DoubleCap
+    imul    rbx,    2
+    mov     rdx,    rbx
+    call _cvec_resize
+
+N_isFull:
+
+    mov     rcx,    QWORD[rbp-8]     
+    
+    mov     ebx,    DWORD[rcx+8]    ; ebx = vec->dataSize
+    mov     r8d,    DWORD[rcx+12]   ; r8d = vec->size
+    
+    imul    rbx,    r8              ; rbx = vec->size * vec->dataSize
+
+    add     r8,     1               ; vec->size += 1
+    mov     [rcx+12], r8d
+    
+    mov     r8,     QWORD[rcx]      ; r8 = vec->data
+    add     rbx,    r8              ; place = vec->data + (size * element_size);
+
+    mov     r8d,    DWORD[rcx+8]    ; eax = vec->dataSize
+    mov     rcx,    rbx             ; rcx = place
+    mov     rdx,    QWORD[rbp-16]
+    call    memcpy ;memcpy(place(rcx), data (rdx), vec->element_size(r8));
+
+    mov     rsp, rbp
+    pop     rbx
+    pop     rbp
+ret
+
 global _cvec_pop_back ; rcx - *vec
 _cvec_pop_back:
 
@@ -185,3 +276,44 @@ _cvec_pop_back:
     add rsp, 8
 ret
 
+global _cvec_del_el		; rcx = *vec, rdx = index
+_cvec_del_el:
+    push    rbp
+    push    rbx
+    mov     rbp, rsp
+    sub     rsp, 32+24 ; alignment + (stak_spase % 16 + 8)
+    ;save:
+    mov     [rbp-8],    rcx 
+    mov     [rbp-16],   rdx
+
+    mov     eax,    DWORD[rcx+8]    ; rax = vec->dataSize
+    mov     rbx,    QWORD[rcx]      ; rbx = vec->data
+    add     rdx,    1               ; rdx = index + 1
+    imul    rdx,    rax
+    add     rdx,    rbx             ; rdx = source
+
+    mov     rbx,    QWORD[rbp-16]   ; rbx = index
+    mov     eax,    DWORD[rcx+8]    ; rax = vec->dataSize
+    mov     r8d,    DWORD[rcx+12]   ; r8 = vec->size
+    add     rbx,    1               ; rdx = index + 1
+    sub     r8,     rbx             ; r8 = (size-i)
+    imul    r8,     rax             ; r8 = (size-(i + 1) * size_el)
+
+    mov     rbx,    QWORD[rbp-16]   ; rbx = index
+    mov     eax,    DWORD[rcx+8]    ; rax = vec->dataSize
+    imul    rbx,    rax             ; rbx = index * size_el
+    mov     rcx,    QWORD[rcx]      ; rcx = vec->data
+    add     rcx,    rbx             ; rcx = destination
+
+    call memmove ;(*destination (rcx), *source (rdx), (size-(i + 1) * size_el) (r8));
+
+    mov     rcx,    QWORD[rbp-8]    ; rbx = index
+    mov     eax,    DWORD[rcx+12]   ; rax = vec->size
+    sub     rax,    1               ; rax = vec->size - 1
+    mov     DWORD[rcx+12],    eax
+
+
+    mov     rsp, rbp
+    pop     rbx
+    pop     rbp
+ret

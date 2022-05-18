@@ -14,65 +14,28 @@ typedef struct {
 	int test;
 } c_vector;
 
-bool IsFull(c_vector* vec) 
-{
-	return vec->capacity == vec->size;
-}
+extern int   _add(int, int);	
 
-void CopyFor(c_vector* vec, int index)
-{
-	for (int i = index; (i + 1) < vec->size; ++i)
-	{
-		void* current = (char*)vec->data + (i * vec->element_size);
-		void* next = (char*)vec->data + ((i + 1) * vec->element_size);
-		memcpy(current, next, vec->element_size);
-	}
-}
+extern void  _cvec_init			(c_vector* vec, int dataSize);
+extern void  _cvec_copy			(c_vector* vecF, c_vector* vecS);
 
-void DoubleCap(c_vector* vec) { _cvec_resize(vec, vec->capacity * 2); }
+extern int   _cvec_size			(c_vector* vec);
+extern int   _cvec_capacity		(c_vector* vec);
 
-void cvec_push_back(c_vector* vec, void* data)
-{
-	if (IsFull(vec))
-		DoubleCap(vec);
+extern void  _cvec_resize		(c_vector* vec, int newCap); 
+extern void  _cvec_clear		(c_vector* vec); 
 
-	void* place = (char*)vec->data + (vec->size * vec->element_size);
-	memcpy(place, data, vec->element_size);
-
-	++vec->size;
-}
-
-void cvec_resize(c_vector* vec, int newCap)
-{
-	vec->capacity = newCap;
-
-	void* t = malloc(vec->element_size * vec->capacity);
-	memcpy(t, vec->data, vec->element_size * vec->size);
-
-	free(vec->data);
-	vec->data = t;
-}
-extern int _add(int, int);	
-
-extern void _cvec_init			(c_vector* vec, int dataSize); 
-
-extern void _cvec_resize		(c_vector* vec, int newCap); 
-extern void _cvec_clear			(c_vector* vec); // not work
-
-extern void _cvec_set			(c_vector* vec, int index, void* data);
+extern void  _cvec_set			(c_vector* vec, int index, void* data);
 extern void* _cvec_get			(c_vector* vec, int index);
 
+extern void  _cvec_push_back	(c_vector* vec, void* data);
 extern void* _cvec_pop_back		(c_vector* vec);
-
-extern int _cvec_size			(c_vector* vec);
-extern int _cvec_capacity		(c_vector* vec);
-
-
+extern void	 _cvec_del_el		(c_vector* vec, int index);// not work !!!QUESION!!!
 
 int main(void)
 {
   c_vector Tvec;
-  int a = 10, b = 5;
+  int a = 10, b = 143;
 
   printf("start\n");
 
@@ -83,19 +46,24 @@ int main(void)
   _cvec_resize(&Tvec, 57);
 
   for (int i = 0; i < 100; ++i)
-		cvec_push_back(&Tvec, &i);
-
-  int i = _add(a, b);
-  int s = _cvec_size(&Tvec);
+		_cvec_push_back(&Tvec, &i);
   
   _cvec_resize(&Tvec, 1000);
-
-  int c = _cvec_capacity(&Tvec);
+  
+  _cvec_push_back(&Tvec, &b);
   
   _cvec_set(&Tvec, 211, &b);
 
-  printf("a/b = %d\t S vec is %d\t C vec is %d\t vec[x] %d\t\n", i, s, c, *(int*)_cvec_get(&Tvec, 211));
-  
+  printf("Tvec:\t S vec is %d\t C vec is %d\t vec[x] %d\t\n", _cvec_size(&Tvec), _cvec_capacity(&Tvec), *(int*)_cvec_get(&Tvec, 100));
+
+  c_vector TTvec;
+  _cvec_init(&TTvec, sizeof(int));
+  _cvec_copy(&TTvec, &Tvec);
+
+  _cvec_del_el(&TTvec, 5);
+  printf("TTvec:\t Data = %d\t cap is %d\t size is %d\t vec_T[x] is %d\t\n", TTvec.data, _cvec_capacity(&TTvec), _cvec_size(&TTvec), *(int*)_cvec_get(&TTvec, 5));
+
+  _cvec_clear(&Tvec);
   printf("end\n");
   return 0;
 }
