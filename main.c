@@ -7,11 +7,10 @@
 
 typedef struct {
 	void* data;
-	int element_size;
+	size_t element_size;
 
-	int size;
-	int capacity;
-	int test;
+	size_t size;
+	size_t capacity;
 } c_vector;
 
 extern int   _add(int, int);	
@@ -22,7 +21,7 @@ extern void  _cvec_copy			(c_vector* vecF, c_vector* vecS);
 extern int   _cvec_size			(c_vector* vec);
 extern int   _cvec_capacity		(c_vector* vec);
 
-extern void  _cvec_resize		(c_vector* vec, int newCap); 
+extern int  _cvec_resize		(c_vector* vec, int newCap); 
 extern void  _cvec_clear		(c_vector* vec); 
 
 extern void  _cvec_set			(c_vector* vec, int index, void* data);
@@ -35,7 +34,7 @@ extern void	 _cvec_del_el		(c_vector* vec, int index);// not work !!!QUESION!!!
 int main(void)
 {
   c_vector Tvec;
-  int a = 10, b = 143;
+  int b = 143;
 
   printf("start\n");
 
@@ -48,13 +47,14 @@ int main(void)
   for (int i = 0; i < 100; ++i)
 		_cvec_push_back(&Tvec, &i);
   
-  _cvec_resize(&Tvec, 1000);
+  
+  printf("Tvec:\t resize is %d\t\n", _cvec_resize(&Tvec, 200));
   
   _cvec_push_back(&Tvec, &b);
   
   _cvec_set(&Tvec, 211, &b);
 
-  printf("Tvec:\t S vec is %d\t C vec is %d\t vec[x] %d\t\n", _cvec_size(&Tvec), _cvec_capacity(&Tvec), *(int*)_cvec_get(&Tvec, 100));
+  printf("Tvec:\t S vec is %d\t C vec is %d\t vec[x] %d\t\n", _cvec_size(&Tvec), _cvec_capacity(&Tvec), *(int*)_cvec_get(&Tvec, 211));
 
   c_vector TTvec;
   _cvec_init(&TTvec, sizeof(int));
